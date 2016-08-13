@@ -1,0 +1,97 @@
+# -*- coding: utf-8 -*-
+import urllib.request
+import http.cookiejar
+import re
+import time
+import sys
+import pymysql  
+import datetime
+import config
+
+
+_host=   config.host
+_db=     config.db
+_user=   config.user
+_passwd= config.passwd 
+_port=   config.port
+_name=   u"AAAAAAA"
+def getInfo():
+    global url,_name
+    try:
+        objUrl = url  + '&t=' + str(int(time.time()))
+        '''
+        req = urllib.request.Request(objUrl)
+        req.add_header('Referer', 'http://www.baidu.com')
+        req.add_header('User-Agent','Mozilla/5.0 (Windows NT 6.3; WOW64; rv:42.0) Gecko/20100101 Firefox/42.0')
+        req.add_header('Cookie', 'ccsalt=accec7690bfcca6655180c6a17355fe5; CNZZDATA5418000=cnzz_eid%3D1241442876-1457692697-%26ntime%3D1457692697; IESESSION=alive; tencentSig=6342689792; click_times=1; Hm_lvt_dad24abebba647625189f407f7103e48=1457692777; Hm_lpvt_dad24abebba647625189f407f7103e48=1457692777')
+        response = urllib.request.urlopen(req,timeout=5)
+        '''
+        cookie = http.cookiejar.CookieJar()#保存cookie
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie))
+        opener.addheaders = [('User-agent', 'Mozilla/5.0 (Windows NT 6.1; rv:44.0) Gecko/20100101 Firefox/44.0')]
+        htmlStr = opener.open(url).read().decode('utf-8')
+        #html = response.read()
+        #htmlStr= html.decode('utf-8')
+        #print (htmlStr)
+        reObj = re.compile('periodDate":"(\\d+)","awardTime":"([\\d\\-\\s:]*)","awardNumbers":"(\\d),(\\d),(\\d),(\\d),(\\d)')
+        ret = re.search(reObj, htmlStr)
+        A = ret.group(1)
+        #datetime = time.strftime('%Y-%m-%d %H:%M:%S')
+        datetime=ret.group(2)
+        mysql_insert(A)
+
+    except:
+        raise
+        print ('['+_name+']'+u'采集数据错误!'+'')
+
+    return
+
+
+def mysql_insert(A):
+    global qi,_host,_user,_passwd,_db,_port,_name
+    try:
+        conn = pymysql.connect(host=_host, user=_user, passwd=_passwd, port=_port, db=_db)
+        cur = conn.cursor()
+        count = cur.execute("")
+        if count == 0:
+            sql_insert = ""
+            cur.execute(sql_insert)
+
+            print ('['+_name+']'+u'写入数据库成功'+'!')
+
+    except:
+        print ('['+_name+']'+u'写入数据库失败'+'!')
+    else:
+        cur.close()
+        conn.close()
+    finally:
+        qi = qishu[-3:]
+
+
+url = 'http://www.baidu.com'
+
+interval = 10
+qi = ''
+
+while 1:
+    try:
+        conn = pymysql.connect(host=_host, user=_user, passwd=_passwd, port=_port, db=_db)
+        cur = conn.cursor()
+        t = time.strftime('%H:%M:%S', time.localtime())
+        sql = ""
+        count = cur.execute(sql)
+        q = cur.fetchone()
+        if q[0] is not None:
+            qstr = '%03d' % q[0]
+            if qi != qstr:
+                print ('['+_name+']'+u'开始采集'+'>')
+                getInfo()
+        print ('['+_name+']'+u'等待'+' '+str(interval)+' '+u'秒'+' ...')
+        time.sleep(interval)
+    except:
+        print ('['+_name+']'+u'主函数错误'+'!')
+    else:
+        cur.close()
+        conn.close()
+
+
